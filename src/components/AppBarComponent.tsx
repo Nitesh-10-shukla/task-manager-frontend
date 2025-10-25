@@ -9,7 +9,6 @@ const AppBarComponent: React.FC = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const { mode, toggleTheme } = useThemeMode();
-  console.log('AppBarComponent render - user:', user);
   const handleLogout = () => {
     logout();
     navigate('/signin');
