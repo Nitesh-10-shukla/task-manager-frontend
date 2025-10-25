@@ -1,52 +1,69 @@
 import React, { useState } from 'react';
-import {
-  Container,
-  Box,
-  Paper,
-  Typography,
-  TextField,
-  Button,
-  Link,
-  Alert,
-} from '@mui/material';
+import { Container, Box, Paper, Typography, TextField, Button, Link, Alert } from '@mui/material';
 import { CheckCircle } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useSignUp } from '@/services/hooks/useAuth';
+import PasswordInput from '@/components/PasswordInput';
+import { useToast } from '@/components/ui/use-toast';
+import { ApiError } from '@/types/error';
 
 const SignUp: React.FC = () => {
   const navigate = useNavigate();
-  const { signup } = useAuth();
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const { mutate: signUp, isPending, error } = useSignUp();
+  const { toast } = useToast();
+
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+  });
+  const [formError, setFormError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setFormError('');
 
-    if (password !== confirmPassword) {
-      setError('Passwords do not match');
+    if (formData.password !== formData.confirmPassword) {
+      setFormError('Passwords do not match');
       return;
     }
 
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters');
+    if (formData.password.length < 6) {
+      setFormError('Password must be at least 6 characters');
       return;
     }
 
-    setLoading(true);
+    signUp(
+      {
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
+        role: 'User',
+      },
+      {
+        onSuccess: () => {
+          toast({
+            title: 'Account created successfully',
+            description: 'Please sign in with your credentials',
+          });
+          navigate('/signin');
+        },
+        onError: (error) => {
+          const errorMessage =
+            (error as ApiError)?.response?.data?.message || 'Failed to create account';
+          toast({
+            title: 'Error',
+            description: errorMessage,
+            variant: 'destructive',
+          });
+        },
+      }
+    );
+  };
 
-    try {
-      await signup(name, email, password);
-      navigate('/dashboard');
-    } catch (err) {
-      setError('Failed to create account. Please try again.');
-    } finally {
-      setLoading(false);
-    }
+  const handleChange = (field: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData((prev) => ({ ...prev, [field]: e.target.value }));
   };
 
   return (
@@ -67,18 +84,20 @@ const SignUp: React.FC = () => {
               Task Manager
             </Typography>
           </Box>
-          
+
           <Typography variant="h5" align="center" gutterBottom>
             Sign Up
           </Typography>
-          
+
           <Typography variant="body2" align="center" color="text.secondary" sx={{ mb: 3 }}>
             Create your account to get started.
           </Typography>
 
-          {error && (
+          {(formError || error) && (
             <Alert severity="error" sx={{ mb: 2 }}>
-              {error}
+              {formError ||
+                (error as ApiError)?.response?.data?.message ||
+                'Failed to create account'}
             </Alert>
           )}
 
@@ -86,9 +105,8 @@ const SignUp: React.FC = () => {
             <TextField
               fullWidth
               label="Full Name"
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+              value={formData.name}
+              onChange={handleChange('name')}
               margin="normal"
               required
               autoComplete="name"
@@ -99,44 +117,40 @@ const SignUp: React.FC = () => {
               fullWidth
               label="Email Address"
               type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              value={formData.email}
+              onChange={handleChange('email')}
               margin="normal"
               required
               autoComplete="email"
             />
-            
-            <TextField
-              fullWidth
-              label="Password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              margin="normal"
-              required
-              autoComplete="new-password"
-            />
 
-            <TextField
-              fullWidth
-              label="Confirm Password"
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              margin="normal"
-              required
-              autoComplete="new-password"
-            />
+            <Box sx={{ mt: 2, mb: 1 }}>
+              <PasswordInput
+                value={formData.password}
+                onChange={handleChange('password')}
+                label="Password"
+                autoComplete="new-password"
+              />
+            </Box>
+
+            <Box sx={{ mt: 2, mb: 1 }}>
+              <PasswordInput
+                value={formData.confirmPassword}
+                onChange={handleChange('confirmPassword')}
+                label="Confirm Password"
+                autoComplete="new-password"
+              />
+            </Box>
 
             <Button
               type="submit"
               fullWidth
               variant="contained"
               size="large"
-              disabled={loading}
+              disabled={isPending}
               sx={{ mt: 3, mb: 2 }}
             >
-              {loading ? 'Creating Account...' : 'Sign Up'}
+              {isPending ? 'Creating Account...' : 'Sign Up'}
             </Button>
 
             <Box sx={{ textAlign: 'center' }}>

@@ -64,9 +64,8 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           MuiCard: {
             styleOverrides: {
               root: {
-                boxShadow: mode === 'light' 
-                  ? '0 2px 8px rgba(0,0,0,0.1)' 
-                  : '0 2px 8px rgba(0,0,0,0.3)',
+                boxShadow:
+                  mode === 'light' ? '0 2px 8px rgba(0,0,0,0.1)' : '0 2px 8px rgba(0,0,0,0.3)',
               },
             },
           },

@@ -1,39 +1,39 @@
-import React, { useState } from 'react';
-import {
-  Container,
-  Box,
-  Paper,
-  Typography,
-  TextField,
-  Button,
-  Link,
-  Alert,
-} from '@mui/material';
+import React, { useState, useEffect } from 'react';
+import { Container, Box, Paper, Typography, TextField, Button, Link, Alert } from '@mui/material';
 import { CheckCircle } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useSignIn } from '@/services/hooks/useAuth';
+import PasswordInput from '@/components/PasswordInput';
+import { ApiError } from '@/types/error';
 
 const SignIn: React.FC = () => {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const location = useLocation();
+  const { mutate: signIn, isPending, error } = useSignIn();
+  const { isAuthenticated } = useAuth();
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [formError, setFormError] = useState('');
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      const from = location.state?.from?.pathname || '/dashboard';
+      navigate(from, { replace: true });
+    }
+  }, [isAuthenticated, navigate, location]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-    setLoading(true);
+    setFormError('');
 
-    try {
-      await login(email, password);
-      navigate('/dashboard');
-    } catch (err) {
-      setError('Invalid email or password');
-    } finally {
-      setLoading(false);
+    if (!email || !password) {
+      setFormError('Please fill in all fields');
+      return;
     }
+
+    signIn({ email, password });
   };
 
   return (
@@ -54,18 +54,20 @@ const SignIn: React.FC = () => {
               Task Manager
             </Typography>
           </Box>
-          
+
           <Typography variant="h5" align="center" gutterBottom>
             Sign In
           </Typography>
-          
+
           <Typography variant="body2" align="center" color="text.secondary" sx={{ mb: 3 }}>
             Welcome back! Please sign in to continue.
           </Typography>
 
-          {error && (
+          {(formError || error) && (
             <Alert severity="error" sx={{ mb: 2 }}>
-              {error}
+              {formError ||
+                (error as ApiError)?.response?.data?.message ||
+                'Invalid email or password'}
             </Alert>
           )}
 
@@ -81,28 +83,38 @@ const SignIn: React.FC = () => {
               autoComplete="email"
               autoFocus
             />
-            
-            <TextField
-              fullWidth
-              label="Password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              margin="normal"
-              required
-              autoComplete="current-password"
-            />
+
+            <Box sx={{ mt: 2, mb: 1 }}>
+              <PasswordInput
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="current-password"
+              />
+            </Box>
 
             <Button
               type="submit"
               fullWidth
               variant="contained"
               size="large"
-              disabled={loading}
+              disabled={isPending}
               sx={{ mt: 3, mb: 2 }}
             >
-              {loading ? 'Signing In...' : 'Sign In'}
+              {isPending ? 'Signing In...' : 'Sign In'}
             </Button>
+
+            {/* <Box sx={{ textAlign: 'center', mb: 2 }}>
+              <Typography variant="body2">
+                <Link
+                  component="button"
+                  type="button"
+                  onClick={() => navigate('/forgot-password')}
+                  underline="hover"
+                >
+                  Forgot Password?
+                </Link>
+              </Typography>
+            </Box> */}
 
             <Box sx={{ textAlign: 'center' }}>
               <Typography variant="body2">
@@ -115,16 +127,6 @@ const SignIn: React.FC = () => {
                 >
                   Sign Up
                 </Link>
-              </Typography>
-            </Box>
-
-            <Box sx={{ mt: 2, p: 2, bgcolor: 'action.hover', borderRadius: 1 }}>
-              <Typography variant="caption" color="text.secondary">
-                Demo credentials:
-                <br />
-                Admin: admin@test.com / any password
-                <br />
-                User: user@test.com / any password
               </Typography>
             </Box>
           </Box>

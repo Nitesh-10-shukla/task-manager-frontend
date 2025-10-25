@@ -1,91 +1,44 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-
-interface User {
-  id: string;
-  email: string;
-  name: string;
-  role: 'admin' | 'user';
-}
+import React, { createContext, useContext } from 'react';
+import { useCurrentUser, useSignOut } from '@/services/hooks/useAuth';
+import TokenService from '../utils/token';
+import { User } from '@/types';
 
 interface AuthContextType {
   user: User | null;
-  token: string | null;
-  login: (email: string, password: string) => Promise<void>;
-  signup: (name: string, email: string, password: string) => Promise<void>;
-  logout: () => void;
   isAuthenticated: boolean;
+  isLoading: boolean;
+  logout: () => void;
+  refetchUser: () => void;
+  hasToken: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
-
-  useEffect(() => {
-    // Check for stored auth data on mount
-    const storedToken = localStorage.getItem('token');
-    const storedUser = localStorage.getItem('user');
-    
-    if (storedToken && storedUser) {
-      setToken(storedToken);
-      setUser(JSON.parse(storedUser));
-    }
-  }, []);
-
-  const login = async (email: string, password: string) => {
-    // Mock login - replace with actual API call
-    const mockUser: User = {
-      id: '1',
-      email,
-      name: email.split('@')[0],
-      role: email.includes('admin') ? 'admin' : 'user'
-    };
-    const mockToken = 'mock-jwt-token-' + Date.now();
-
-    setUser(mockUser);
-    setToken(mockToken);
-    localStorage.setItem('token', mockToken);
-    localStorage.setItem('user', JSON.stringify(mockUser));
-  };
-
-  const signup = async (name: string, email: string, password: string) => {
-    // Mock signup - replace with actual API call
-    const mockUser: User = {
-      id: Date.now().toString(),
-      email,
-      name,
-      role: 'user'
-    };
-    const mockToken = 'mock-jwt-token-' + Date.now();
-
-    setUser(mockUser);
-    setToken(mockToken);
-    localStorage.setItem('token', mockToken);
-    localStorage.setItem('user', JSON.stringify(mockUser));
-  };
+  const hasToken = TokenService.hasToken();
+  const { data: user, isLoading, refetch } = useCurrentUser(hasToken);
+  const { mutate: signOut } = useSignOut();
 
   const logout = () => {
-    setUser(null);
-    setToken(null);
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    signOut();
   };
 
-  return (
-    <AuthContext.Provider
-      value={{
-        user,
-        token,
-        login,
-        signup,
-        logout,
-        isAuthenticated: !!token
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
-  );
+  const refetchUser = () => {
+    if (hasToken) {
+      refetch();
+    }
+  };
+
+  const value: AuthContextType = {
+    user: user || null,
+    isAuthenticated: !!user,
+    isLoading: isLoading && hasToken,
+    logout,
+    refetchUser,
+    hasToken,
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = () => {
